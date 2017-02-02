@@ -352,16 +352,18 @@ def on_start_command(bot, update):
            "/list_0_100 \n" \
            "/list_0_100_names \n" \
            "/list_0_100_confirmed \n" \
-           "/list_0_100_notconfirmed \n\n" \
+           "/list_0_100_notconfirmed \n" \
+           "/list_0_100_final \n\n" \
            "/list_100_1000 \n" \
            "/list_100_1000_names \n" \
            "/list_100_1000_confirmed \n" \
            "/list_100_1000_notconfirmed \n" \
-           "/list_100_1000_notconfirmed \n\n" \
+           "/list_100_1000_final \n\n" \
            "/list_5000_plus \n" \
            "/list_5000_plus_names \n" \
            "/list_5000_plus_confirmed \n" \
-           "/list_5000_plus_notconfirmed \n"
+           "/list_5000_plus_notconfirmed \n" \
+           "/list_5000_plus_final \n"
 
     update.message.reply_text(text=text)
 
@@ -407,6 +409,10 @@ def on_list_0_100_notconfirmed_command(bot, update):
         return
     on_list_not_confirmed_channels(bot, update, "0_100_list", 0, 100)
 
+def on_list_0_100_final_command(bot, update, args):
+    if not is_admin(update):
+        return
+    on_list_final(bot, update, "0_100_list", 0, 100, args)
 
 def on_list_100_1000_command(bot, update):
     if not is_admin(update):
@@ -461,11 +467,15 @@ def on_list_5000_plus_notconfirmed_command(bot, update):
         return
     on_list_not_confirmed_channels(bot, update, "5000_plus_list", 5000, 1000000)
 
+def on_list_5000_plus_final_command(bot, update, args):
+    if not is_admin(update):
+        return
+    on_list_final(bot, update, "5000_plus_list", 5000, 1000000, args)
 
 def on_list_confirmed_channels(bot, update, type, low, high):
     logger.info("on_list_confirmed_channels")
 
-    channels_list = filter(lambda x: x.stage != "#confirm", channels.range_list(low, high))
+    channels_list = filter(lambda x: x.stage == "#confirm", channels.range_list(low, high))
 
     text = ""
     for channel in channels_list:
@@ -496,9 +506,8 @@ def grouper(n, iterable, fillvalue=None):
 
 
 def on_list_final(bot, update, type, low, high, args):
-
     if len(args) < 1:
-        update.message.reply_text("Require arguments to command")
+        update.message.reply_text("<command< <no_of_list> <emojis...>")
         return
 
     no = int(args[0])
@@ -508,7 +517,7 @@ def on_list_final(bot, update, type, low, high, args):
         update.message.reply_text("specified [%d] lists, but only [%d] emojis" % (no, len(emojis)))
         return
 
-    channels_list = filter(lambda x: x.stage == "#confirm", channels.range_list(low, high))
+    channels_list = filter(lambda x: x.stage != "#confirm", channels.range_list(low, high))
 
     message = "splitting [%d] channels into [%d] lists" % (len(channels_list), no)
     logger.info("on_split_list: %s", message)
@@ -534,12 +543,14 @@ def on_list_final(bot, update, type, low, high, args):
 
     for i in range(0, len(final_channels_list)):
         channels_list = final_channels_list[i]
-        text = ""
+        text = u"🗣 Best channels you should join today. \n Here is the list👇 \n\n"
         for channel in channels_list:
             text += emojis[i] + " " + channel.raw_format() + "\n\n"
+        text += u"_____________________\n JOIN TO PROMOTE YOUR CHANNEL \n➡️  @promote_it\n"
 
         text += "\n#%s #list%d #%dchannels #%dreach" % (type, i+1, len(channels_list), sum(c.count for c in channels_list))
         logger.info("\n%s" % text)
+        update.message.reply_text(text)
 
 
 def error(bot, update, error):
@@ -568,6 +579,7 @@ def start_bot():
     dp.add_handler(CommandHandler("list_0_100_names", on_list_0_100_names_command))
     dp.add_handler(CommandHandler("list_0_100_confirmed", on_list_0_100_confirmed_command))
     dp.add_handler(CommandHandler("list_0_100_notconfirmed", on_list_0_100_notconfirmed_command))
+    dp.add_handler(CommandHandler("list_0_100_final", on_list_0_100_final_command, pass_args=True))
 
     dp.add_handler(CommandHandler("list_100_1000", on_list_100_1000_command))
     dp.add_handler(CommandHandler("list_100_1000_names", on_list_100_1000_names_command))
@@ -579,6 +591,7 @@ def start_bot():
     dp.add_handler(CommandHandler("list_5000_plus_names", on_list_5000_plus_names_command))
     dp.add_handler(CommandHandler("list_5000_plus_confirmed", on_list_5000_plus_confirmed_command))
     dp.add_handler(CommandHandler("list_5000_plus_notconfirmed", on_list_5000_plus_notconfirmed_command))
+    dp.add_handler(CommandHandler("list_5000_plus_final", on_list_5000_plus_final_command, pass_args=True))
 
     dp.add_handler(MessageHandler(Filters.text, on_message))
     dp.add_error_handler(error)

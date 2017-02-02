@@ -8,15 +8,14 @@ import re
 import logging
 import pickle
 import redis
+import itertools
 
 from tgbots import get_random_bot
 from telegram import TelegramError
 
-
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    level=logging.INFO)
+                    level=logging.INFO)
 logger = logging.getLogger("crosspromo")
-
 
 newp = re.compile('.*(#new).*(@\w+)(.*)')
 confirmp = re.compile('.*(#confirm).*(@\w+)(.*)')
@@ -37,14 +36,11 @@ class Channel(object):
         self.stage = stage
         self.strip()
 
-
     def update_stage(self, stage):
         self.stage = stage
 
-
     def log(self):
         logger.info("channel - [%s], [%s], [%d], [%s]" % (self.name, self.desc, self.count, self.stage))
-
 
     def strip(self):
         if self.name:
@@ -59,10 +55,13 @@ class Channel(object):
         if self.stage:
             self.stage = self.stage.strip()
 
-
     def format(self):
         msg = "\n%s %s (%d) \n%s" % (self.stage,
-            self.name, self.count, self.desc)
+                                     self.name, self.count, self.desc)
+        return msg
+
+    def raw_format(self):
+        msg = "%s\n%s" % (self.name, self.desc)
         return msg
 
 
@@ -70,17 +69,14 @@ class Channels(object):
     def __init__(self):
         self.channels = {}
 
-
     def add(self, channel):
         self.channels[channel.name] = channel
-
 
     def get(self, channel):
         if self.channels.has_key(channel.name):
             return self.channels[channel.name]
         else:
             return None
-
 
     def remove(self, channel):
         if self.channels.has_key(channel.name):
@@ -89,12 +85,10 @@ class Channels(object):
         else:
             return False
 
-
     def list(self):
         channels_list = self.channels.values()
         channels_list.sort(key=lambda x: x.count, reverse=True)
         return channels_list
-
 
     def range_list(self, low, high):
         channels_list = []
@@ -105,10 +99,8 @@ class Channels(object):
 
         return channels_list
 
-
     def names(self):
         return self.channels.keys()
-
 
     def range_names(self, low, high):
         names = []
@@ -119,7 +111,6 @@ class Channels(object):
 
         return names
 
-
     def clear(self):
         self.channels.clear()
 
@@ -129,14 +120,12 @@ class Database(object):
         self.redis_key = "promo_channels"
         self.rdb = redis.StrictRedis(host='localhost', port=6379, db=0)
 
-
     def load(self):
         raw = self.rdb.get(self.redis_key)
         if raw:
             return pickle.loads(raw)
         else:
             return Channels()
-
 
     def store(self, channels):
         self.rdb.set(self.redis_key, pickle.dumps(channels))
@@ -150,12 +139,11 @@ channels = db.load()
 
 
 def refresh_channel_from_telegram(channel, bot=None):
-    
     tgbot = bot
     if tgbot is None:
         tgbot = get_random_bot()
 
-    try :
+    try:
         channel.count = tgbot.getChatMembersCount(chat_id=channel.name)
         channel.name = "@%s" % tgbot.getChat(channel.name).username
     except TelegramError as tgerr:
@@ -332,9 +320,10 @@ def split_text(text):
 def is_admin(update):
     chat_id = update.message.chat_id
     if chat_id in [90296554, 73834819, 5522373, 106555675]:
-       return True
+        return True
     else:
-       return False
+        return False
+
 
 def on_message(bot, update):
     if not is_admin(update):
@@ -363,15 +352,18 @@ def on_start_command(bot, update):
            "/list_0_100 \n" \
            "/list_0_100_names \n" \
            "/list_0_100_confirmed \n" \
-           "/list_0_100_notconfirmed \n\n" \
+           "/list_0_100_notconfirmed \n" \
+           "/list_0_100_final \n\n" \
            "/list_100_1000 \n" \
            "/list_100_1000_names \n" \
            "/list_100_1000_confirmed \n" \
-           "/list_100_1000_notconfirmed \n\n" \
+           "/list_100_1000_notconfirmed \n" \
+           "/list_100_1000_final \n\n" \
            "/list_5000_plus \n" \
            "/list_5000_plus_names \n" \
            "/list_5000_plus_confirmed \n" \
-           "/list_5000_plus_notconfirmed \n"
+           "/list_5000_plus_notconfirmed \n" \
+           "/list_5000_plus_final \n"
 
     update.message.reply_text(text=text)
 
@@ -417,6 +409,10 @@ def on_list_0_100_notconfirmed_command(bot, update):
         return
     on_list_not_confirmed_channels(bot, update, "0_100_list", 0, 100)
 
+def on_list_0_100_final_command(bot, update, args):
+    if not is_admin(update):
+        return
+    on_list_final(bot, update, "0_100_list", 0, 100, args)
 
 def on_list_100_1000_command(bot, update):
     if not is_admin(update):
@@ -442,6 +438,12 @@ def on_list_100_1000_notconfirmed_command(bot, update):
     on_list_not_confirmed_channels(bot, update, "100_1000_list", 100, 1000)
 
 
+def on_list_100_1000_final_command(bot, update, args):
+    if not is_admin(update):
+        return
+    on_list_final(bot, update, "100_1000_list", 100, 1000, args)
+
+
 def on_list_5000_plus_command(bot, update):
     if not is_admin(update):
         return
@@ -465,40 +467,91 @@ def on_list_5000_plus_notconfirmed_command(bot, update):
         return
     on_list_not_confirmed_channels(bot, update, "5000_plus_list", 5000, 1000000)
 
+def on_list_5000_plus_final_command(bot, update, args):
+    if not is_admin(update):
+        return
+    on_list_final(bot, update, "5000_plus_list", 5000, 1000000, args)
 
 def on_list_confirmed_channels(bot, update, type, low, high):
     logger.info("on_list_confirmed_channels")
 
-    channels_list = channels.range_list(low, high)
-
-    count = 0
+    channels_list = filter(lambda x: x.stage == "#confirm", channels.range_list(low, high))
 
     text = ""
     for channel in channels_list:
-        if "#confirm" == channel.stage:
-            text += channel.format() + "\n"
-            count = count + 1
-    text += "\n#%s %s #%dchannels" % (type, "#confirmed", count)
+        text += channel.format() + "\n"
+    text += "\n#%s %s #%dchannels" % (type, "#confirmed", len(channels_list))
 
     logger.info("\n%s" % text)
     update.message.reply_text(text=text)
 
 
 def on_list_not_confirmed_channels(bot, update, type, low, high):
-    logger.info("on_list_confirmed_channels")
+    logger.info("on_list_not_confirmed_channels")
 
-    channels_list = channels.range_list(low, high)
+    channels_list = filter(lambda x: x.stage != "#confirm", channels.range_list(low, high))
 
-    count = 0
     text = ""
     for channel in channels_list:
-        if "#confirm" != channel.stage:
-            text += channel.format() + "\n"
-            count = count + 1
-    text += "\n#%s %s #%dchannels" % (type, "#notconfirmed", count)
+        text += channel.format() + "\n"
+    text += "\n#%s %s #%dchannels" % (type, "#notconfirmed", len(channels_list))
 
     logger.info("\n%s" % text)
     update.message.reply_text(text=text)
+
+
+def grouper(n, iterable, fillvalue=None):
+    args = [iter(iterable)] * n
+    return itertools.izip_longest(fillvalue=fillvalue, *args)
+
+
+def on_list_final(bot, update, type, low, high, args):
+    if len(args) < 1:
+        update.message.reply_text("<command< <no_of_list> <emojis...>")
+        return
+
+    no = int(args[0])
+    emojis = args[1:]
+
+    if len(emojis) < no:
+        update.message.reply_text("specified [%d] lists, but only [%d] emojis" % (no, len(emojis)))
+        return
+
+    channels_list = filter(lambda x: x.stage != "#confirm", channels.range_list(low, high))
+
+    message = "splitting [%d] channels into [%d] lists" % (len(channels_list), no)
+    logger.info("on_split_list: %s", message)
+    update.message.reply_text(message)
+
+    final_channels_list = []
+    for list in range(0, no):
+        final_channels_list.append([])
+
+    flip = False
+    for i in grouper(no, channels_list):
+        elements = None
+        if flip:
+            elements = i[::-1]
+            flip = False
+        else:
+            elements = i
+            flip = True
+
+        for e in range(0, len(elements)):
+            if elements[e] is not None:
+                final_channels_list[e].append(elements[e])
+
+    for i in range(0, len(final_channels_list)):
+        channels_list = final_channels_list[i]
+        text = u"🗣 Best channels you should join today. \n Here is the list👇 \n\n"
+        for channel in channels_list:
+            text += emojis[i] + " " + channel.raw_format() + "\n\n"
+        text += u"_____________________\n JOIN TO PROMOTE YOUR CHANNEL \n➡️  @promote_it\n"
+
+        text += "\n#%s #list%d #%dchannels #%dreach" % (type, i+1, len(channels_list), sum(c.count for c in channels_list))
+        logger.info("\n%s" % text)
+        update.message.reply_text(text)
+
 
 def error(bot, update, error):
     logger.warn('update "%s" caused error "%s"' % (update, error))
@@ -508,7 +561,6 @@ def error(bot, update, error):
 #############################################################################
 
 def start_bot():
-
     from telegram.ext import Updater, CommandHandler, MessageHandler, Filters
     from tgbots import bot_token
 
@@ -527,16 +579,19 @@ def start_bot():
     dp.add_handler(CommandHandler("list_0_100_names", on_list_0_100_names_command))
     dp.add_handler(CommandHandler("list_0_100_confirmed", on_list_0_100_confirmed_command))
     dp.add_handler(CommandHandler("list_0_100_notconfirmed", on_list_0_100_notconfirmed_command))
+    dp.add_handler(CommandHandler("list_0_100_final", on_list_0_100_final_command, pass_args=True))
 
     dp.add_handler(CommandHandler("list_100_1000", on_list_100_1000_command))
     dp.add_handler(CommandHandler("list_100_1000_names", on_list_100_1000_names_command))
     dp.add_handler(CommandHandler("list_100_1000_confirmed", on_list_100_1000_confirmed_command))
     dp.add_handler(CommandHandler("list_100_1000_notconfirmed", on_list_100_1000_notconfirmed_command))
+    dp.add_handler(CommandHandler("list_100_1000_final", on_list_100_1000_final_command, pass_args=True))
 
     dp.add_handler(CommandHandler("list_5000_plus", on_list_5000_plus_command))
     dp.add_handler(CommandHandler("list_5000_plus_names", on_list_5000_plus_names_command))
     dp.add_handler(CommandHandler("list_5000_plus_confirmed", on_list_5000_plus_confirmed_command))
     dp.add_handler(CommandHandler("list_5000_plus_notconfirmed", on_list_5000_plus_notconfirmed_command))
+    dp.add_handler(CommandHandler("list_5000_plus_final", on_list_5000_plus_final_command, pass_args=True))
 
     dp.add_handler(MessageHandler(Filters.text, on_message))
     dp.add_error_handler(error)
@@ -550,15 +605,15 @@ def clean_channels():
     channels.clear()
     db.store(channels)
 
-def refresh_count():
 
+def refresh_count():
     logger.info("#refreshing")
 
     channels_list = channels.list()
-    
+
     for i in range(0, len(channels_list)):
         bot = get_random_bot(i)
-        channel = channels_list[i]; 
+        channel = channels_list[i];
         channel = refresh_channel_from_telegram(channel, bot)
         logger.info(i)
         channel.log()
@@ -567,6 +622,7 @@ def refresh_count():
     db.store(channels)
 
     logger.info("#refreshed")
+
 
 if __name__ == '__main__':
     if len(sys.argv) < 2:
