@@ -200,7 +200,7 @@ def on_shared_channel(bot, update, channel):
 
 
 def on_remove_channel(bot, update, channel):
-    channel = refresh_channel_from_telegram(channel)
+    #channel = refresh_channel_from_telegram(channel)
 
     removed = channels.remove(channel)
     if removed is False:
@@ -479,7 +479,7 @@ def on_list_confirmed_channels(bot, update, type, low, high):
 
     text = ""
     for channel in channels_list:
-        text += channel.format() + "\n"
+        text += channel.name + "\n"
     text += "\n#%s %s #%dchannels" % (type, "#confirmed", len(channels_list))
 
     logger.info("\n%s" % text)
@@ -493,7 +493,7 @@ def on_list_not_confirmed_channels(bot, update, type, low, high):
 
     text = ""
     for channel in channels_list:
-        text += channel.format() + "\n"
+        text += channel.name + "\n"
     text += "\n#%s %s #%dchannels" % (type, "#notconfirmed", len(channels_list))
 
     logger.info("\n%s" % text)
@@ -517,7 +517,7 @@ def on_list_final(bot, update, type, low, high, args):
         update.message.reply_text("specified [%d] lists, but only [%d] emojis" % (no, len(emojis)))
         return
 
-    channels_list = filter(lambda x: x.stage != "#confirm", channels.range_list(low, high))
+    channels_list = filter(lambda x: x.stage == "#confirm", channels.range_list(low, high))
 
     message = "splitting [%d] channels into [%d] lists" % (len(channels_list), no)
     logger.info("on_split_list: %s", message)
