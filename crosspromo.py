@@ -10,7 +10,7 @@ import pickle
 import redis
 import itertools
 
-from tgbots import get_random_bot
+from tgbots import get_random_bot, is_admin
 from telegram import TelegramError
 
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
@@ -118,6 +118,7 @@ class Channels(object):
 class Database(object):
     def __init__(self):
         self.redis_key = "promo_channels"
+        self.redis_archive_key = "promo_channels_archive"
         self.rdb = redis.StrictRedis(host='localhost', port=6379, db=0)
 
     def load(self):
@@ -130,6 +131,9 @@ class Database(object):
     def store(self, channels):
         self.rdb.set(self.redis_key, pickle.dumps(channels))
 
+    def archive(self, channels):
+        self.rdb.set(self.redis_archive_key, pickle.dumps(channels))
+        
 
 #############################################################################
 
@@ -200,7 +204,7 @@ def on_shared_channel(bot, update, channel):
 
 
 def on_remove_channel(bot, update, channel):
-    #channel = refresh_channel_from_telegram(channel)
+    channel = refresh_channel_from_telegram(channel)
 
     removed = channels.remove(channel)
     if removed is False:
@@ -317,14 +321,6 @@ def split_text(text):
     return texts
 
 
-def is_admin(update):
-    chat_id = update.message.chat_id
-    if chat_id in [90296554, 73834819, 5522373, 106555675]:
-        return True
-    else:
-        return False
-
-
 def on_message(bot, update):
     if not is_admin(update):
         return
@@ -349,16 +345,21 @@ def on_start_command(bot, update):
            "#remove <name> \n\n" \
            "/list_all \n" \
            "/list_all_names \n\n" \
-           "/list_0_100 \n" \
-           "/list_0_100_names \n" \
-           "/list_0_100_confirmed \n" \
-           "/list_0_100_notconfirmed \n" \
-           "/list_0_100_final \n\n" \
-           "/list_100_1000 \n" \
-           "/list_100_1000_names \n" \
-           "/list_100_1000_confirmed \n" \
-           "/list_100_1000_notconfirmed \n" \
-           "/list_100_1000_final \n\n" \
+           "/list_0_500 \n" \
+           "/list_0_500_names \n" \
+           "/list_0_500_confirmed \n" \
+           "/list_0_500_notconfirmed \n" \
+           "/list_0_500_final \n\n" \
+           "/list_500_1000 \n" \
+           "/list_500_1000_names \n" \
+           "/list_500_1000_confirmed \n" \
+           "/list_500_1000_notconfirmed \n" \
+           "/list_500_1000_final \n\n" \
+           "/list_1000_5000 \n" \
+           "/list_1000_5000_names \n" \
+           "/list_1000_5000_confirmed \n" \
+           "/list_1000_5000_notconfirmed \n" \
+           "/list_1000_5000_final \n\n" \
            "/list_5000_plus \n" \
            "/list_5000_plus_names \n" \
            "/list_5000_plus_confirmed \n" \
@@ -386,62 +387,94 @@ def on_list_all_names_command(bot, update):
     on_list_channel_names(bot, update, "all", 0, 1000000)
 
 
-def on_list_0_100_command(bot, update):
+def on_list_0_500_command(bot, update):
     if not is_admin(update):
         return
-    on_list_channels(bot, update, "0_100_list", 0, 100)
+    on_list_channels(bot, update, "0_500_list", 0, 500)
 
 
-def on_list_0_100_names_command(bot, update):
+def on_list_0_500_names_command(bot, update):
     if not is_admin(update):
         return
-    on_list_channel_names(bot, update, "0_100_names", 0, 100)
+    on_list_channel_names(bot, update, "0_500_names", 0, 500)
 
 
-def on_list_0_100_confirmed_command(bot, update):
+def on_list_0_500_confirmed_command(bot, update):
     if not is_admin(update):
         return
-    on_list_confirmed_channels(bot, update, "0_100_list", 0, 100)
+    on_list_confirmed_channels(bot, update, "0_500_list", 0, 500)
 
 
-def on_list_0_100_notconfirmed_command(bot, update):
+def on_list_0_500_notconfirmed_command(bot, update):
     if not is_admin(update):
         return
-    on_list_not_confirmed_channels(bot, update, "0_100_list", 0, 100)
+    on_list_not_confirmed_channels(bot, update, "0_500_list", 0, 500)
 
-def on_list_0_100_final_command(bot, update, args):
+
+def on_list_0_500_final_command(bot, update, args):
     if not is_admin(update):
         return
-    on_list_final(bot, update, "0_100_list", 0, 100, args)
+    on_list_final(bot, update, "0_500_list", 0, 500, args)
 
-def on_list_100_1000_command(bot, update):
+
+def on_list_500_1000_command(bot, update):
     if not is_admin(update):
         return
-    on_list_channels(bot, update, "100_1000_list", 100, 1000)
+    on_list_channels(bot, update, "500_1000_list", 500, 1000)
 
 
-def on_list_100_1000_names_command(bot, update):
+def on_list_500_1000_names_command(bot, update):
     if not is_admin(update):
         return
-    on_list_channel_names(bot, update, "100_1000_names", 100, 1000)
+    on_list_channel_names(bot, update, "500_1000_names", 500, 1000)
 
 
-def on_list_100_1000_confirmed_command(bot, update):
+def on_list_500_1000_confirmed_command(bot, update):
     if not is_admin(update):
         return
-    on_list_confirmed_channels(bot, update, "100_1000_list", 100, 1000)
+    on_list_confirmed_channels(bot, update, "500_1000_list", 500, 1000)
 
 
-def on_list_100_1000_notconfirmed_command(bot, update):
+def on_list_500_1000_notconfirmed_command(bot, update):
     if not is_admin(update):
         return
-    on_list_not_confirmed_channels(bot, update, "100_1000_list", 100, 1000)
+    on_list_not_confirmed_channels(bot, update, "500_1000_list", 500, 1000)
 
 
-def on_list_100_1000_final_command(bot, update, args):
+def on_list_500_1000_final_command(bot, update, args):
     if not is_admin(update):
         return
-    on_list_final(bot, update, "100_1000_list", 100, 1000, args)
+    on_list_final(bot, update, "500_1000_list", 500, 1000, args)
+
+
+def on_list_1000_5000_command(bot, update):
+    if not is_admin(update):
+        return
+    on_list_channels(bot, update, "1000_5000_list", 1000, 5000)
+
+
+def on_list_1000_5000_names_command(bot, update):
+    if not is_admin(update):
+        return
+    on_list_channel_names(bot, update, "1000_5000_names", 1000, 5000)
+
+
+def on_list_1000_5000_confirmed_command(bot, update):
+    if not is_admin(update):
+        return
+    on_list_confirmed_channels(bot, update, "1000_5000_list", 1000, 5000)
+
+
+def on_list_1000_5000_notconfirmed_command(bot, update):
+    if not is_admin(update):
+        return
+    on_list_not_confirmed_channels(bot, update, "1000_5000_list", 1000, 5000)
+
+
+def on_list_1000_5000_final_command(bot, update, args):
+    if not is_admin(update):
+        return
+    on_list_final(bot, update, "1000_5000_list", 1000, 5000, args)
 
 
 def on_list_5000_plus_command(bot, update):
@@ -467,10 +500,12 @@ def on_list_5000_plus_notconfirmed_command(bot, update):
         return
     on_list_not_confirmed_channels(bot, update, "5000_plus_list", 5000, 1000000)
 
+
 def on_list_5000_plus_final_command(bot, update, args):
     if not is_admin(update):
         return
     on_list_final(bot, update, "5000_plus_list", 5000, 1000000, args)
+
 
 def on_list_confirmed_channels(bot, update, type, low, high):
     logger.info("on_list_confirmed_channels")
@@ -575,23 +610,31 @@ def start_bot():
     dp.add_handler(CommandHandler("list_all", on_list_all_command))
     dp.add_handler(CommandHandler("list_all_names", on_list_all_names_command))
 
-    dp.add_handler(CommandHandler("list_0_100", on_list_0_100_command))
-    dp.add_handler(CommandHandler("list_0_100_names", on_list_0_100_names_command))
-    dp.add_handler(CommandHandler("list_0_100_confirmed", on_list_0_100_confirmed_command))
-    dp.add_handler(CommandHandler("list_0_100_notconfirmed", on_list_0_100_notconfirmed_command))
-    dp.add_handler(CommandHandler("list_0_100_final", on_list_0_100_final_command, pass_args=True))
+    dp.add_handler(CommandHandler("list_0_500", on_list_0_500_command))
+    dp.add_handler(CommandHandler("list_0_500_names", on_list_0_500_names_command))
+    dp.add_handler(CommandHandler("list_0_500_confirmed", on_list_0_500_confirmed_command))
+    dp.add_handler(CommandHandler("list_0_500_notconfirmed", on_list_0_500_notconfirmed_command))
+    dp.add_handler(CommandHandler("list_0_500_final", on_list_0_500_final_command, pass_args=True))
 
-    dp.add_handler(CommandHandler("list_100_1000", on_list_100_1000_command))
-    dp.add_handler(CommandHandler("list_100_1000_names", on_list_100_1000_names_command))
-    dp.add_handler(CommandHandler("list_100_1000_confirmed", on_list_100_1000_confirmed_command))
-    dp.add_handler(CommandHandler("list_100_1000_notconfirmed", on_list_100_1000_notconfirmed_command))
-    dp.add_handler(CommandHandler("list_100_1000_final", on_list_100_1000_final_command, pass_args=True))
+    dp.add_handler(CommandHandler("list_500_1000", on_list_500_1000_command))
+    dp.add_handler(CommandHandler("list_500_1000_names", on_list_500_1000_names_command))
+    dp.add_handler(CommandHandler("list_500_1000_confirmed", on_list_500_1000_confirmed_command))
+    dp.add_handler(CommandHandler("list_500_1000_notconfirmed", on_list_500_1000_notconfirmed_command))
+    dp.add_handler(CommandHandler("list_500_1000_final", on_list_500_1000_final_command, pass_args=True))
+
+    dp.add_handler(CommandHandler("list_1000_5000", on_list_1000_5000_command))
+    dp.add_handler(CommandHandler("list_1000_5000_names", on_list_1000_5000_names_command))
+    dp.add_handler(CommandHandler("list_1000_5000_confirmed", on_list_1000_5000_confirmed_command))
+    dp.add_handler(CommandHandler("list_1000_5000_notconfirmed", on_list_1000_5000_notconfirmed_command))
+    dp.add_handler(CommandHandler("list_1000_5000_final", on_list_1000_5000_final_command, pass_args=True))
 
     dp.add_handler(CommandHandler("list_5000_plus", on_list_5000_plus_command))
     dp.add_handler(CommandHandler("list_5000_plus_names", on_list_5000_plus_names_command))
     dp.add_handler(CommandHandler("list_5000_plus_confirmed", on_list_5000_plus_confirmed_command))
     dp.add_handler(CommandHandler("list_5000_plus_notconfirmed", on_list_5000_plus_notconfirmed_command))
     dp.add_handler(CommandHandler("list_5000_plus_final", on_list_5000_plus_final_command, pass_args=True))
+
+    dp.add_handler(CommandHandler("clean_channels", clean_channels))
 
     dp.add_handler(MessageHandler(Filters.text, on_message))
     dp.add_error_handler(error)
@@ -602,9 +645,16 @@ def start_bot():
 
 
 def clean_channels():
+    if not is_admin(update):
+        return
+
+    logger.info("clean_channels")
+
+    db.archive(channels)
     channels.clear()
     db.store(channels)
 
+    logger.info("clean_channels done")
 
 def refresh_count():
     logger.info("#refreshing")
