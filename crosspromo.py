@@ -237,13 +237,24 @@ def on_list_channels(bot, update, type, low, high):
 
     channels_list = channels.range_list(low, high)
 
+    no = 1
     text = ""
     for channel in channels_list:
         text += channel.format() + "\n"
+         
+        if len(text) > 3500: 
+            update.message.reply_text(text=text)
+            text = ""
+            no = no + 1
+            time.sleep(1)
+            
     text += "\n#%s #%dchannels" % (type, len(channels_list))
 
     logger.info("\n%s" % text)
     update.message.reply_text(text=text)
+
+    if no > 1:
+        update.message.reply_text(text="Hey, total [%d] msgs, okay !!" % no)
 
 
 def on_refresh_channels(bot, update):
@@ -644,7 +655,7 @@ def start_bot():
     updater.idle()
 
 
-def clean_channels():
+def clean_channels(bot, update):
     if not is_admin(update):
         return
 
@@ -683,7 +694,5 @@ if __name__ == '__main__':
 
     if input == "start":
         start_bot()
-    elif input == "clean":
-        clean_channels()
     elif input == "refresh":
         refresh_count()
