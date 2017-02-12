@@ -39,6 +39,9 @@ class Channel(object):
     def update_stage(self, stage):
         self.stage = stage
 
+    def update_count(self, count):
+        self.count = count
+
     def log(self):
         logger.info("channel - [%s], [%s], [%d], [%s]" % (self.name, self.desc, self.count, self.stage))
 
@@ -150,6 +153,7 @@ def refresh_channel_from_telegram(channel, bot=None):
     try:
         channel.count = tgbot.getChatMembersCount(chat_id=channel.name)
         channel.name = "@%s" % tgbot.getChat(channel.name).username
+        logger.info("Got [%d] count for [%s] channe from telegram" % (channel.count, channel.name))
     except TelegramError as tgerr:
         logger.error(tgerr)
 
@@ -179,6 +183,7 @@ def on_confirm_channel(bot, update, channel):
         return
 
     existing.update_stage("#confirm")
+    existing.update_count(channel.count)
     existing.log()
     db.store(channels)
     logger.info("on_confirm_channel - #confirmed %s" % channel.name)
@@ -187,8 +192,6 @@ def on_confirm_channel(bot, update, channel):
 
 
 def on_shared_channel(bot, update, channel):
-    channel = refresh_channel_from_telegram(channel)
-
     existing = channels.get(channel)
     if existing is None:
         logger.info("on_shared_channel - #notfound %s" % channel.name)
